@@ -92,7 +92,7 @@ function isExpectedPageProfile(activeName, expectedName) {
 function isLoginUrl(url) {
   try {
     const { pathname } = new URL(url);
-    return /^\/(login|checkpoint)(\/|$)|^\/login\.php$/.test(pathname);
+    return /^\/(login|checkpoint|two_step_verification|auth_platform)(\/|$)|^\/login\.php$/.test(pathname);
   } catch {
     return false;
   }
@@ -109,6 +109,32 @@ function extractProfileName(label) {
 function captionMatches(actual, expected) {
   const squash = (value) => String(value || "").replace(/\s+/g, " ").trim();
   return squash(actual) === squash(expected);
+}
+
+// Decide what the page shows after the publish click.
+// Login/checkpoint redirects are failures; leaving the page we started on is
+// success; otherwise alert text decides, and silence means keep waiting.
+function classifyPublishState({ url, startedUrl, alertText = "" }) {
+  if (isLoginUrl(url)) {
+    return { state: "failed", reason: `Facebook asked for a login or security check (${url}).` };
+  }
+  const pathOf = (value) => {
+    try {
+      return new URL(value).pathname;
+    } catch {
+      return String(value || "");
+    }
+  };
+  if (pathOf(url) !== pathOf(startedUrl)) {
+    return { state: "published" };
+  }
+  if (uiLabels.pattern("facebookError").test(alertText)) {
+    return { state: "failed", reason: `Facebook reported: ${alertText.slice(0, 200)}` };
+  }
+  if (uiLabels.pattern("facebookPublished").test(alertText)) {
+    return { state: "published" };
+  }
+  return { state: "waiting" };
 }
 
 function exactLabel(key) {
@@ -167,16 +193,13 @@ async function setCaption(page, caption) {
   }
 }
 
-async function waitForPublishResult(page, timeoutMs) {
+async function waitForPublishResult(page, startedUrl, timeoutMs) {
   const deadline = Date.now() + timeoutMs;
-  const published = uiLabels.pattern("facebookPublished");
-  const failed = uiLabels.pattern("facebookError");
   while (Date.now() < deadline) {
-    if (!/\/reels\/create/.test(page.url())) return { ok: true };
     const alerts = await page.getByRole("alert").allInnerTexts().catch(() => []);
-    const text = alerts.join(" ");
-    if (failed.test(text)) return { ok: false, reason: `Facebook reported: ${text.slice(0, 200)}` };
-    if (published.test(text)) return { ok: true };
+    const result = classifyPublishState({ url: page.url(), startedUrl, alertText: alerts.join(" ") });
+    if (result.state === "published") return { ok: true };
+    if (result.state === "failed") return { ok: false, reason: result.reason };
     await page.waitForTimeout(2000);
   }
   return { ok: false, reason: `No Facebook publish confirmation within ${timeoutMs / 1000}s.` };
@@ -212,9 +235,10 @@ async function uploadVideo({ videoPath, caption, accountId }) {
     await next.click();
 
     const publish = await waitForEnabledButton(page, "facebookPublish", 60000);
+    const startedUrl = page.url();
     await publish.click();
 
-    const result = await waitForPublishResult(page, 120000);
+    const result = await waitForPublishResult(page, startedUrl, 120000);
     if (!result.ok) {
       throw new Error(result.reason);
     }
@@ -238,7 +262,7 @@ async function uploadVideo({ videoPath, caption, accountId }) {
 
 module.exports = {
   uploadVideo,
-  _private: { isExpectedPageProfile, isLoginUrl, extractProfileName, captionMatches },
+  _private: { isExpectedPageProfile, isLoginUrl, extractProfileName, captionMatches, classifyPublishState },
   openPersistentContext,
   startLoginSession,
   getLoginSessionStatus,

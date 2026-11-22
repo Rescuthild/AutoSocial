@@ -125,11 +125,9 @@ const FACEBOOK_LABELS = {
     "published",
     "shared",
     "posted",
-    "processing",
     "paylaşıldı",
     "yayınlandı",
     "yayınlanıyor",
-    "işleniyor",
   ],
   facebookError: ["something went wrong", "couldn't", "failed", "bir sorun", "başarısız", "yapılamadı"],
 };

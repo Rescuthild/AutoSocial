@@ -34,3 +34,31 @@ test("caption check ignores whitespace differences but not text changes", () => 
   assert.equal(captionMatches("Ping neden?\nSpecial thanks and credit to: youtube.com/@evanciao\n#ping  #oyun", caption), true);
   assert.equal(captionMatches("Ping neden?\nSpecial thanks and credit to: youtube.com/Evan Ciao\n#ping #oyun", caption), false);
 });
+
+const { classifyPublishState } = _private;
+const STARTED = "https://www.facebook.com/reels/create";
+
+test("publish state: redirect to a checkpoint or login after publish is a failure", () => {
+  assert.equal(classifyPublishState({ url: "https://www.facebook.com/checkpoint/1501", startedUrl: STARTED }).state, "failed");
+  assert.equal(classifyPublishState({ url: "https://www.facebook.com/login/?next=x", startedUrl: STARTED }).state, "failed");
+  assert.equal(classifyPublishState({ url: "https://www.facebook.com/two_step_verification/authentication/", startedUrl: STARTED }).state, "failed");
+});
+
+test("publish state: leaving the composer page for another page is success", () => {
+  assert.equal(classifyPublishState({ url: "https://www.facebook.com/", startedUrl: STARTED }).state, "published");
+});
+
+test("publish state: same page with only a processing notice keeps waiting", () => {
+  assert.equal(classifyPublishState({ url: STARTED, startedUrl: STARTED, alertText: "" }).state, "waiting");
+  assert.equal(classifyPublishState({ url: STARTED, startedUrl: STARTED, alertText: "Processing your reel" }).state, "waiting");
+});
+
+test("publish state: alert text decides when the url does not change", () => {
+  assert.equal(classifyPublishState({ url: STARTED, startedUrl: STARTED, alertText: "Reels videon payla\u015f\u0131ld\u0131" }).state, "published");
+  assert.equal(classifyPublishState({ url: STARTED, startedUrl: STARTED, alertText: "Bir sorun olu\u015ftu" }).state, "failed");
+});
+
+test("publish state: a configured upload url without /reels/create is not instant success", () => {
+  const started = "https://business.facebook.com/latest/reels_composer?asset_id=1";
+  assert.equal(classifyPublishState({ url: started, startedUrl: started, alertText: "" }).state, "waiting");
+});
