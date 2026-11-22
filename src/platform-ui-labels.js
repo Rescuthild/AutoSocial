@@ -74,6 +74,51 @@ const LABELS = {
   ],
 };
 
+// Turkish labels. JavaScript's "i" flag does not fold "İ" to "i", so words
+// that start with "İ" are listed in both forms.
+const TURKISH_LABELS = {
+  create: ["oluştur"],
+  instagramPostFormat: ["gönderi"],
+  instagramReelFormat: ["reels videosu"],
+  instagramUploadTrigger: ["bilgisayardan seç", "bilgisayarından seç"],
+  next: ["ileri", "İleri"],
+  captionAttribute: ["açıklama", "altyazı"],
+  share: ["paylaş"],
+  posted: ["paylaşıldı", "yayınlandı"],
+  error: ["hata", "başarısız", "yapılamadı", "bir sorun oluştu"],
+
+  youtubeCreate: ["oluştur"],
+  youtubeUploadVideo: ["video yükle", "videoları yükle"],
+  youtubeSelectFiles: ["dosya seç", "dosyaları seç"],
+  youtubeTitleAttribute: ["başlık"],
+  youtubeDescriptionAttribute: ["açıklama"],
+  youtubeNotMadeForKids: ["çocuklara özel değil", "çocuklar için yapılmadı"],
+  youtubePublic: ["herkese açık"],
+  youtubePublish: ["yayınla"],
+  youtubeSave: ["kaydet"],
+  youtubePublished: ["yayınlandı", "işleniyor"],
+
+  tiktokSearchSounds: ["ses ara", "sesleri ara"],
+  tiktokEdit: ["düzenle"],
+  tiktokSounds: ["ses", "sesler"],
+  tiktokText: ["metin"],
+  tiktokSave: ["Kaydet"],
+  tiktokCancel: ["İptal", "iptal"],
+  tiktokShortContentCheck: ["içerik kontrolü", "içerik denetimi"],
+  tiktokEnable: ["etkinleştir", "izin ver", "tamam"],
+  tiktokContinue: ["anladım", "devam"],
+  tiktokLater: ["daha sonra", "şimdi değil", "atla"],
+  tiktokClose: ["İptal", "iptal", "kapat"],
+  tiktokPublish: ["yayınla", "paylaş"],
+  tiktokPublished: ["yayınlandı", "paylaşıldı", "başarılı", "planlandı", "incelemeye gönderildi"],
+  tiktokFailed: ["başarısız", "hata", "yapılamadı", "tekrar dene"],
+  tiktokConfirm: ["yayınla", "paylaş", "onayla", "devam"],
+};
+
+for (const [key, values] of Object.entries(TURKISH_LABELS)) {
+  LABELS[key] = [...(LABELS[key] || []), ...values];
+}
+
 function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

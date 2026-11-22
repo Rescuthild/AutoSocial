@@ -176,10 +176,26 @@ async function setVideoFile(page, videoPath) {
   }
 }
 
-async function setTitleAndDescription(page, caption, fileNameStem) {
+// Optional "<video name>.title" sidecar: when present it becomes the YouTube
+// title and the caption sidecar stays the full description.
+function getTitlePath(videoPath) {
+  const parsed = path.parse(videoPath);
+  return path.join(parsed.dir, `${parsed.name}.title`);
+}
+
+async function readTitle(videoPath) {
+  try {
+    return (await fs.readFile(getTitlePath(videoPath), "utf8")).trim();
+  } catch {
+    return "";
+  }
+}
+
+async function setTitleAndDescription(page, caption, fileNameStem, explicitTitle = "") {
   const effectiveCaption = caption && caption.trim() ? caption.trim() : "";
-  const baseTitle = effectiveCaption || fileNameStem;
-  const shortTitle = baseTitle.slice(0, 95);
+  const shortTitle = explicitTitle
+    ? explicitTitle.slice(0, 100)
+    : (effectiveCaption || fileNameStem).slice(0, 95);
   const descriptionText = effectiveCaption || config.defaultCaption || "";
 
   async function fillContentEditable(locator, value) {
@@ -416,7 +432,8 @@ async function uploadVideo({ videoPath, caption, accountId }) {
     await setTitleAndDescription(
       page,
       caption,
-      path.parse(absoluteVideoPath).name
+      path.parse(absoluteVideoPath).name,
+      await readTitle(absoluteVideoPath)
     );
     await markNotMadeForKids(page);
     await setNotAgeRestricted(page);
@@ -457,6 +474,7 @@ async function uploadVideo({ videoPath, caption, accountId }) {
 }
 
 module.exports = {
+  getTitlePath,
   uploadVideo,
   startLoginSession,
   getLoginSessionStatus,

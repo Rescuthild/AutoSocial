@@ -1,0 +1,21 @@
+# Run from the repository root:
+#   docker compose -f deploy/docker-compose.yml up -d --build
+# Ports and bind addresses come from deploy/.env (not committed):
+#   NOVNC_HOST, NOVNC_PORT, VNC_PORT
+# Dashboard host/port come from the repository .env (DASHBOARD_HOST, DASHBOARD_PORT).
+services:
+  autosocial:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: autosocial:local
+    container_name: autosocial
+    network_mode: host
+    shm_size: "1gb"
+    restart: unless-stopped
+    environment:
+      NOVNC_HOST: ${NOVNC_HOST:-127.0.0.1}
+      NOVNC_PORT: ${NOVNC_PORT:-6085}
+      VNC_PORT: ${VNC_PORT:-5910}
+    volumes:
+      - ..:/app

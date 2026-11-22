@@ -2,7 +2,7 @@ const fs = require("fs/promises");
 const path = require("path");
 const { config } = require("./config");
 const { getNextQueuedItem, getCaptionPaths } = require("./youtube-queue");
-const { uploadVideo } = require("./youtube-uploader");
+const { uploadVideo, getTitlePath } = require("./youtube-uploader");
 const { ensureDirectories, fileExists, moveWithTimestamp } = require("./fs-utils");
 
 async function moveCaptionsIfExists(captionPaths, targetDir) {
@@ -31,7 +31,7 @@ async function postSingleVideo({ videoPath, caption, postedDir, failedDir, accou
   await ensureDirectories([posted, failed]);
 
   const result = await uploadVideo({ videoPath, caption, accountId });
-  const captionPaths = getCaptionPaths(videoPath);
+  const captionPaths = [...getCaptionPaths(videoPath), getTitlePath(videoPath)];
 
   if (result.ok) {
     const movedVideo = await moveFileSafely(videoPath, posted, "posted video");
