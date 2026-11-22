@@ -1133,6 +1133,13 @@ async function setCover(page, coverPath) {
       await cancelPrompt.first().click().catch(() => { });
       await page.waitForTimeout(1000);
     }
+    // The "new editing features" onboarding tour overlays the whole page.
+    const tourButton = page.locator(".react-joyride__tooltip button");
+    if (await tourButton.count()) {
+      await tourButton.last().click({ timeout: 3000 }).catch(() => { });
+      await page.waitForTimeout(800);
+    }
+    await page.evaluate(() => document.querySelector("#react-joyride-portal")?.remove()).catch(() => { });
     await page.getByText(uiLabels.pattern("tiktokEditCover")).first().click({ timeout: 15000 });
     const input = page.locator('input[type="file"][accept*="image"]').first();
     await input.waitFor({ state: "attached", timeout: 15000 });
