@@ -257,6 +257,86 @@ function exactPattern(key) {
   return new RegExp(`^(${escaped.join("|")})$`, "i");
 }
 
+// Instagram's web composer crops every upload to a square unless another
+// ratio is picked on the Crop step. A 9:16 video gets "9:16"; any other shape
+// keeps its own ratio through "Original".
+function chooseCropOption(width, height) {
+  const w = Number(width);
+  const h = Number(height);
+  if (!(w > 0) || !(h > 0)) return null;
+  return Math.abs(w / h - 9 / 16) < 0.02 ? "portrait" : "original";
+}
+
+// While the square crop is active the preview overflows the crop frame; once
+// the right ratio is picked the whole video sits inside it.
+function isCropFitted(videoBox, frameBox) {
+  if (!videoBox || !frameBox) return false;
+  if (!(videoBox.width > 0) || !(videoBox.height > 0)) return false;
+  return videoBox.width <= frameBox.width + 2 && videoBox.height <= frameBox.height + 2;
+}
+
+async function readCropGeometry(page) {
+  return page
+    .evaluate(() => {
+      const dialogs = [...document.querySelectorAll('[role="dialog"]')].filter((d) => d.querySelector("video"));
+      const dialog = dialogs[dialogs.length - 1];
+      const video = dialog && dialog.querySelector("video");
+      if (!video) return null;
+      const v = video.getBoundingClientRect();
+      const f = dialog.getBoundingClientRect();
+      return {
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        video: { width: v.width, height: v.height },
+        frame: { width: f.width, height: f.height },
+      };
+    })
+    .catch(() => null);
+}
+
+// Picks the crop ratio on the Crop step. Throws when it cannot be confirmed:
+// a reel published in the wrong shape is worse than a post that fails.
+async function setCrop(page) {
+  let lastReason = "video preview not found";
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const before = await readCropGeometry(page);
+    const option = before && chooseCropOption(before.videoWidth, before.videoHeight);
+    if (!option) {
+      await page.waitForTimeout(3000);
+      continue;
+    }
+    const optionKey = option === "portrait" ? "instagramCropPortrait" : "instagramCropOriginal";
+    const menuSelector = uiLabels
+      .terms("instagramSelectCrop")
+      .map((label) => `[role="dialog"] svg[aria-label="${label}" i]`)
+      .join(", ");
+    try {
+      const dialog = page.getByRole("dialog");
+      const optionButton = dialog.getByText(exactPattern(optionKey)).first();
+      if (!(await optionButton.isVisible().catch(() => false))) {
+        await page
+          .locator(menuSelector)
+          .first()
+          .locator("xpath=ancestor::*[self::button or @role='button'][1]")
+          .click({ timeout: 5000 });
+        await page.waitForTimeout(1000);
+      }
+      await optionButton.click({ timeout: 5000 });
+      await page.waitForTimeout(1500);
+    } catch (error) {
+      lastReason = error.message.split("\n")[0];
+      continue;
+    }
+    const after = await readCropGeometry(page);
+    if (after && isCropFitted(after.video, after.frame)) {
+      console.log(`Instagram crop set to ${option} (${before.videoWidth}x${before.videoHeight}).`);
+      return option;
+    }
+    lastReason = "preview still overflows the crop frame";
+  }
+  throw new Error(`Instagram crop could not be set: ${lastReason}.`);
+}
+
 // The cover picker accepts images only; the main media picker also takes
 // video. Feeding the cover to the main picker would add it as a second item.
 function isCoverInputAccept(accept) {
@@ -409,6 +489,7 @@ async function uploadVideo({ videoPath, caption, accountId }) {
     await setVideoFile(page, absoluteVideoPath);
     await page.waitForTimeout(Math.max(config.postDelayMs, 5000));
     await dismissPrompts(page);
+    await setCrop(page);
     const coverPath = await getCoverPath(absoluteVideoPath);
     if (coverPath && (await advanceToEditStep(page))) {
       await setCover(page, coverPath);
@@ -468,6 +549,9 @@ module.exports = {
     advanceToEditStep,
     isCoverInputAccept,
     setCover,
+    chooseCropOption,
+    isCropFitted,
+    setCrop,
   },
   startLoginSession,
   getLoginSessionStatus,

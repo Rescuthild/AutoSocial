@@ -114,6 +114,9 @@ const TURKISH_LABELS = {
   tiktokFailed: ["başarısız", "hata", "yapılamadı", "tekrar dene"],
   tiktokConfirm: ["yayınla", "paylaş", "onayla", "devam"],
   instagramCoverPhoto: ["cover photo", "kapak fotoğrafı"],
+  instagramSelectCrop: ["select crop", "kırpmayı seç", "kırpma seç"],
+  instagramCropPortrait: ["9:16"],
+  instagramCropOriginal: ["original", "orijinal"],
   instagramDismiss: ["not now", "ok", "şimdi değil", "tamam"],
   tiktokEditCover: ["edit cover", "kapağı düzenle", "kapak düzenle"],
 };
