@@ -22,9 +22,9 @@ case "$NOVNC_HOST" in
 esac
 
 if [ -n "$VNC_PASSWORD" ]; then
-  mkdir -p /tmp/vnc
-  x11vnc -storepasswd "$VNC_PASSWORD" /tmp/vnc/passwd >/dev/null 2>&1
-  VNC_AUTH="-rfbauth /tmp/vnc/passwd"
+  # printf is a shell builtin, so the secret never appears in process argv.
+  (umask 077 && mkdir -p /tmp/vnc && printf '%s\n' "$VNC_PASSWORD" > /tmp/vnc/passwd)
+  VNC_AUTH="-passwdfile /tmp/vnc/passwd"
 else
   VNC_AUTH="-nopw"
 fi
