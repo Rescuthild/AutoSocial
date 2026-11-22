@@ -115,7 +115,26 @@ const TURKISH_LABELS = {
   tiktokConfirm: ["yayınla", "paylaş", "onayla", "devam"],
 };
 
-for (const [key, values] of Object.entries(TURKISH_LABELS)) {
+// Facebook Reels composer (facebook.com/reels/create), English + Turkish.
+const FACEBOOK_LABELS = {
+  facebookClose: ["close", "kapat"],
+  facebookNext: ["next", "ileri", "İleri"],
+  facebookPublish: ["post", "share", "publish", "gönderi", "paylaş", "yayınla"],
+  facebookCaptionBox: ["describe your reel", "reels videonu açıkla"],
+  facebookPublished: [
+    "published",
+    "shared",
+    "posted",
+    "processing",
+    "paylaşıldı",
+    "yayınlandı",
+    "yayınlanıyor",
+    "işleniyor",
+  ],
+  facebookError: ["something went wrong", "couldn't", "failed", "bir sorun", "başarısız", "yapılamadı"],
+};
+
+for (const [key, values] of Object.entries({ ...TURKISH_LABELS, ...FACEBOOK_LABELS })) {
   LABELS[key] = [...(LABELS[key] || []), ...values];
 }
 
