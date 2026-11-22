@@ -12,6 +12,27 @@ function getCaptionPaths(videoPath) {
   ];
 }
 
+// Optional cover image sidecar: "<video name>.kapak.jpg" (preferred) or ".kapak.png".
+function getCoverCandidates(videoPath) {
+  const parsed = path.parse(videoPath);
+  return [
+    path.join(parsed.dir, `${parsed.name}.kapak.jpg`),
+    path.join(parsed.dir, `${parsed.name}.kapak.png`),
+  ];
+}
+
+async function getCoverPath(videoPath) {
+  for (const candidate of getCoverCandidates(videoPath)) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {
+      // try next
+    }
+  }
+  return "";
+}
+
 async function readCaption(videoPath) {
   const captionPaths = getCaptionPaths(videoPath);
   for (const cp of captionPaths) {
@@ -65,6 +86,8 @@ async function getNextQueuedItem(queueDir) {
 module.exports = {
   getNextQueuedItem,
   getCaptionPaths,
+  getCoverCandidates,
+  getCoverPath,
   listQueueVideos,
   VIDEO_EXTENSIONS,
 };
