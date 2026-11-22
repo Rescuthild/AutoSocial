@@ -61,6 +61,10 @@ class DaemonController {
     this._scheduledTimers = new Set();
     this.statePath = options.statePath || path.resolve(config.projectRoot, "scheduler-state.json");
     this._loadState();
+    if (this._resumeOnLoad) {
+      this.start();
+      this.log("Scheduler resumed after restart.");
+    }
   }
 
   _loadState() {
@@ -79,6 +83,7 @@ class DaemonController {
         this.cronExpression = state.cronExpression;
         this.schedulePlan = { type: "cron", expression: this.cronExpression };
       }
+      this._resumeOnLoad = state.enabled === true;
       if (typeof state.instantPost === "boolean") {
         this.instantPost = state.instantPost;
         if (this.instantPost) {
@@ -90,20 +95,32 @@ class DaemonController {
     }
   }
 
+  // Writes are chained and read the current values at write time, so a
+  // stop() followed by start() always leaves the final state on disk.
   async _saveState() {
+    this._saveChain = (this._saveChain || Promise.resolve()).then(() => this._writeState());
+    return this._saveChain;
+  }
+
+  async _writeState() {
+    // Write to a temp file and rename, so a reader or a crash never sees a
+    // half-written state file.
+    const tmpPath = `${this.statePath}.tmp`;
     try {
       await fs.writeFile(
-        this.statePath,
+        tmpPath,
         JSON.stringify(
           {
             cronExpression: this.cronExpression,
             schedulePlan: this.schedulePlan,
             instantPost: this.instantPost,
+            enabled: Boolean(this.task),
           },
           null,
           2
         )
       );
+      await fs.rename(tmpPath, this.statePath);
     } catch (error) {
       this.log(`Failed to save scheduler state: ${error.message}`, "error");
     }
@@ -229,6 +246,12 @@ class DaemonController {
   }
 
   start() {
+    const result = this._startTask();
+    if (!result.alreadyRunning) this._saveState();
+    return result;
+  }
+
+  _startTask() {
     if (this.task) {
       return {
         ok: true,
@@ -278,6 +301,12 @@ class DaemonController {
   }
 
   stop() {
+    const result = this._stopTask();
+    if (!result.alreadyStopped) this._saveState();
+    return result;
+  }
+
+  _stopTask() {
     this._clearScheduledTimers();
     if (!this.task) {
       return {
