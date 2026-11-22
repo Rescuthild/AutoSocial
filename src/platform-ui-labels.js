@@ -113,6 +113,7 @@ const TURKISH_LABELS = {
   tiktokPublished: ["yayınlandı", "paylaşıldı", "başarılı", "planlandı", "incelemeye gönderildi"],
   tiktokFailed: ["başarısız", "hata", "yapılamadı", "tekrar dene"],
   tiktokConfirm: ["yayınla", "paylaş", "onayla", "devam"],
+  tiktokEditCover: ["edit cover", "kapağı düzenle", "kapak düzenle"],
 };
 
 // Facebook Reels composer (facebook.com/reels/create), English + Turkish.

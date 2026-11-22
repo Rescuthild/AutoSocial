@@ -3,6 +3,7 @@ const fs = require("fs/promises");
 const { chromium } = require("playwright");
 const { config } = require("./config");
 const uiLabels = require("./platform-ui-labels");
+const { getCoverPath } = require("./queue");
 const {
   getActiveAccount,
   getPlatformProfileDir,
@@ -1118,6 +1119,39 @@ async function waitForPublishConfirmation(page, responseTracker) {
   }
 }
 
+// Sets a custom cover from a "<video>.kapak.jpg|png" sidecar. Never throws:
+// a failed cover step logs, screenshots, closes the cover dialog and lets the
+// upload continue with TikTok's default cover.
+async function setCover(page, coverPath) {
+  if (!coverPath) return false;
+  const dialogButton = (pattern) =>
+    page.locator(".TUXModal-overlay, [role=\"dialog\"]").getByRole("button", { name: pattern });
+  try {
+    // "Turn on automatic content checks?" can cover the Edit cover control.
+    const cancelPrompt = dialogButton(/^(cancel|not now|iptal|\u015fimdi de\u011fil)$/i);
+    if (await cancelPrompt.count()) {
+      await cancelPrompt.first().click().catch(() => { });
+      await page.waitForTimeout(1000);
+    }
+    await page.getByText(uiLabels.pattern("tiktokEditCover")).first().click({ timeout: 15000 });
+    const input = page.locator('input[type="file"][accept*="image"]').first();
+    await input.waitFor({ state: "attached", timeout: 15000 });
+    await input.setInputFiles(coverPath);
+    await page.waitForTimeout(4000);
+    await dialogButton(/^(save|kaydet)$/i).last().click({ timeout: 15000 });
+    await page.waitForTimeout(2000);
+    console.log(`TikTok cover set from ${path.basename(coverPath)}.`);
+    return true;
+  } catch (error) {
+    console.log(`TikTok cover step failed softly: ${error.message}`);
+    await page
+      .screenshot({ path: path.resolve(config.projectRoot, "last-tiktok-cover-error.png"), fullPage: true })
+      .catch(() => { });
+    await dialogButton(/^(cancel|iptal)$/i).last().click({ timeout: 3000 }).catch(() => { });
+    return false;
+  }
+}
+
 async function waitForUploadReady(page) {
   await page.waitForTimeout(Math.max(config.postDelayMs, 5000));
 }
@@ -1208,6 +1242,7 @@ async function uploadVideo({ videoPath, caption, source, accountId }) {
     await gotoUploadPage(page);
     await setVideoFile(page, absoluteVideoPath);
     await waitForUploadReady(page);
+    await setCover(page, await getCoverPath(absoluteVideoPath));
     await setCaption(page, caption || config.defaultCaption);
     await addDefaultSound(page, source).catch((error) => {
       console.log(`Sound step failed softly: ${error.message}`);
@@ -1258,6 +1293,11 @@ module.exports = {
   closeLoginSession,
   uploadVideo,
   _private: {
+    setCover,
+    gotoUploadPage,
+    setVideoFile,
+    waitForUploadReady,
+    openPersistentContext,
     getPublishCandidateScore,
     isLikelyPublishCandidateInfo,
   },
