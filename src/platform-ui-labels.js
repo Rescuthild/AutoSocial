@@ -113,6 +113,8 @@ const TURKISH_LABELS = {
   tiktokPublished: ["yayınlandı", "paylaşıldı", "başarılı", "planlandı", "incelemeye gönderildi"],
   tiktokFailed: ["başarısız", "hata", "yapılamadı", "tekrar dene"],
   tiktokConfirm: ["yayınla", "paylaş", "onayla", "devam"],
+  instagramCoverPhoto: ["cover photo", "kapak fotoğrafı"],
+  instagramDismiss: ["not now", "ok", "şimdi değil", "tamam"],
   tiktokEditCover: ["edit cover", "kapağı düzenle", "kapak düzenle"],
 };
 

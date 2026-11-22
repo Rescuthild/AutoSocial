@@ -3,6 +3,7 @@ const fs = require("fs/promises");
 const { chromium } = require("playwright");
 const { config } = require("./config");
 const uiLabels = require("./platform-ui-labels");
+const { getCoverPath } = require("./queue");
 const {
   getActiveAccount,
   getPlatformProfileDir,
@@ -238,6 +239,85 @@ async function setVideoFile(page, videoPath) {
   await input.setInputFiles(videoPath);
 }
 
+// First-run prompts ("Turn on Notifications", "Video posts are now shared as
+// reels") sit on top of the create flow and swallow clicks.
+async function dismissPrompts(page) {
+  const buttons = page.getByRole("dialog").getByRole("button", {
+    name: new RegExp(`^(${uiLabels.terms("instagramDismiss").join("|")})$`, "i"),
+  });
+  for (let i = 0; i < 3; i++) {
+    if (!(await buttons.count())) return;
+    await buttons.first().click({ timeout: 3000 }).catch(() => { });
+    await page.waitForTimeout(1200);
+  }
+}
+
+function exactPattern(key) {
+  const escaped = uiLabels.terms(key).map((v) => v.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+  return new RegExp(`^(${escaped.join("|")})$`, "i");
+}
+
+// The cover picker accepts images only; the main media picker also takes
+// video. Feeding the cover to the main picker would add it as a second item.
+function isCoverInputAccept(accept) {
+  const types = String(accept || "").split(",").map((t) => t.trim()).filter(Boolean);
+  return types.length > 0 && types.every((t) => t.startsWith("image/"));
+}
+
+async function isCoverStepVisible(page) {
+  return page
+    .getByText(exactPattern("instagramCoverPhoto"))
+    .first()
+    .isVisible()
+    .catch(() => false);
+}
+
+// Moves from Crop to the Edit step, where "Cover photo" lives.
+async function advanceToEditStep(page) {
+  const nextButtons = [
+    page.getByRole("button", { name: exactPattern("next") }),
+    page.locator('div[role="button"], button').filter({ hasText: exactPattern("next") }),
+  ];
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    if (await isCoverStepVisible(page)) return true;
+    for (const candidate of nextButtons) {
+      if (await clickFirstVisibleEnabledLocator(page, candidate)) break;
+    }
+    await page.waitForTimeout(2500);
+  }
+  return isCoverStepVisible(page);
+}
+
+// Sets the Reel cover on the Edit step from a "<video>.kapak.jpg|png" sidecar.
+// Never throws: a failure logs, screenshots and keeps Instagram's default cover.
+async function setCover(page, coverPath) {
+  if (!coverPath) return false;
+  try {
+    if (!(await isCoverStepVisible(page))) {
+      throw new Error("Edit step with Cover photo is not visible.");
+    }
+    const inputs = page.locator('input[type="file"]');
+    const count = await inputs.count();
+    let coverInput = null;
+    for (let i = 0; i < count; i += 1) {
+      if (isCoverInputAccept(await inputs.nth(i).getAttribute("accept"))) {
+        coverInput = inputs.nth(i);
+      }
+    }
+    if (!coverInput) throw new Error("Cover image input not found.");
+    await coverInput.setInputFiles(coverPath);
+    await page.waitForTimeout(4000);
+    console.log(`Instagram cover set from ${path.basename(coverPath)}.`);
+    return true;
+  } catch (error) {
+    console.log(`Instagram cover step failed softly: ${error.message}`);
+    await page
+      .screenshot({ path: path.resolve(config.projectRoot, "last-instagram-cover-error.png"), fullPage: true })
+      .catch(() => { });
+    return false;
+  }
+}
+
 async function clickNextButtons(page) {
   const nextSelectors = [
     page.getByRole("button", { name: uiLabels.pattern("next") }),
@@ -325,8 +405,14 @@ async function uploadVideo({ videoPath, caption, accountId }) {
 
   try {
     await gotoUploadPage(page);
+    await dismissPrompts(page);
     await setVideoFile(page, absoluteVideoPath);
     await page.waitForTimeout(Math.max(config.postDelayMs, 5000));
+    await dismissPrompts(page);
+    const coverPath = await getCoverPath(absoluteVideoPath);
+    if (coverPath && (await advanceToEditStep(page))) {
+      await setCover(page, coverPath);
+    }
     await clickNextButtons(page);
     await setCaption(page, caption || config.defaultCaption);
 
@@ -374,6 +460,15 @@ async function uploadVideo({ videoPath, caption, accountId }) {
 
 module.exports = {
   uploadVideo,
+  _private: {
+    openPersistentContext,
+    gotoUploadPage,
+    setVideoFile,
+    dismissPrompts,
+    advanceToEditStep,
+    isCoverInputAccept,
+    setCover,
+  },
   startLoginSession,
   getLoginSessionStatus,
   closeLoginSession,
