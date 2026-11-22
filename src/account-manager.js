@@ -80,7 +80,7 @@ async function getState() {
 
 // Queue directory helpers
 
-const PLATFORMS = ["tiktok", "instagram", "youtube"];
+const PLATFORMS = ["tiktok", "instagram", "youtube", "facebook"];
 const SUBDIRS = ["pending", "posted", "failed"];
 
 function getAccountQueueDirs(accountId) {

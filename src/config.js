@@ -58,6 +58,24 @@ const config = {
     projectRoot,
     process.env.YOUTUBE_PROFILE_DIR || ".profile-youtube"
   ),
+  facebookQueueDir: path.resolve(
+    projectRoot,
+    process.env.FACEBOOK_QUEUE_DIR || "queue/default/facebook/pending"
+  ),
+  facebookPostedDir: path.resolve(
+    projectRoot,
+    process.env.FACEBOOK_POSTED_DIR || "queue/default/facebook/posted"
+  ),
+  facebookFailedDir: path.resolve(
+    projectRoot,
+    process.env.FACEBOOK_FAILED_DIR || "queue/default/facebook/failed"
+  ),
+  facebookCronExpression: process.env.FACEBOOK_CRON_EXPRESSION || "0 */2 * * *",
+  facebookUploadPageUrl:
+    process.env.FACEBOOK_UPLOAD_URL || "https://www.facebook.com/reels/create",
+  // Name of the Facebook Page profile that must be active before posting.
+  // Empty means posting is refused, so nothing goes to a personal profile by mistake.
+  facebookPageName: (process.env.FACEBOOK_PAGE_NAME || "").trim(),
   cronExpression: process.env.CRON_EXPRESSION || "0 */2 * * *",
   instagramCronExpression: process.env.INSTAGRAM_CRON_EXPRESSION || "0 */2 * * *",
   youtubeCronExpression: process.env.YOUTUBE_CRON_EXPRESSION || "0 */2 * * *",
