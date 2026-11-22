@@ -409,6 +409,74 @@ async function createServer() {
     }
   });
 
+  // Facebook endpoints (profile-aware)
+
+  app.get("/api/facebook/status", async (req, res) => {
+    const daemons = await getActiveDaemons();
+    const status = await daemons.facebook.getStatus();
+    res.json(status);
+  });
+
+  app.post("/api/facebook/start", async (req, res) => {
+    const daemons = await getActiveDaemons();
+    const result = daemons.facebook.start();
+    res.json(result);
+  });
+
+  app.post("/api/facebook/stop", async (req, res) => {
+    const daemons = await getActiveDaemons();
+    const result = daemons.facebook.stop();
+    res.json(result);
+  });
+
+  app.post("/api/facebook/run-once", async (req, res) => {
+    const daemons = await getActiveDaemons();
+    const result = await daemons.facebook.runOnce("dashboard");
+    res.json(result);
+  });
+
+  app.post("/api/facebook/schedule", async (req, res) => {
+    try {
+      const { expression } = req.body;
+      if (!expression) {
+        return res.status(400).json({ ok: false, error: "Missing expression" });
+      }
+      const daemons = await getActiveDaemons();
+      const result = await daemons.facebook.setSchedule(expression);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ ok: false, error: error.message });
+    }
+  });
+
+  app.post("/api/facebook/schedule-plan", async (req, res) => {
+    try {
+      const { type, times } = req.body || {};
+      if (type !== "daily-times") {
+        return res.status(400).json({ ok: false, error: "Unsupported schedule plan type." });
+      }
+      const daemons = await getActiveDaemons();
+      const result = await daemons.facebook.setDailyTimes(times);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ ok: false, error: error.message });
+    }
+  });
+
+  app.post("/api/facebook/instant-post", async (req, res) => {
+    try {
+      const { enabled } = req.body;
+      if (typeof enabled !== "boolean") {
+        return res.status(400).json({ ok: false, error: "Missing 'enabled' (boolean)" });
+      }
+      const daemons = await getActiveDaemons();
+      const result = await daemons.facebook.setInstantPost(enabled);
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ ok: false, error: error.message });
+    }
+  });
+
   // Login endpoints (Facebook)
 
   app.post("/api/facebook/login", async (req, res) => {

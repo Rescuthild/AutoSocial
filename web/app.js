@@ -54,6 +54,7 @@ const UI = {
     tiktok: { loginOpen: false, sessionSaved: false, schedulerRunning: false },
     instagram: { loginOpen: false, sessionSaved: false, schedulerRunning: false },
     youtube: { loginOpen: false, sessionSaved: false, schedulerRunning: false },
+    facebook: { loginOpen: false, sessionSaved: false, schedulerRunning: false },
     brands: [],
     activeBrandId: null,
     activeBrandName: "",
@@ -62,6 +63,7 @@ const UI = {
     tiktok: false,
     instagram: false,
     youtube: false,
+    facebook: false,
   },
 
   els: {
@@ -135,6 +137,25 @@ const UI = {
     igRandomQueueToggle: document.getElementById("igRandomQueueToggle"),
     igQueueList: document.getElementById("igQueueList"),
     igLogsContainer: document.getElementById("igLogsContainer"),
+    fbRunBtn: document.getElementById("fbRunBtn"),
+    fbStartBtn: document.getElementById("fbStartBtn"),
+    fbStopBtn: document.getElementById("fbStopBtn"),
+    fbCronInput: document.getElementById("fbCronInput"),
+    fbUpdateScheduleBtn: document.getElementById("fbUpdateScheduleBtn"),
+    fbPlanType: document.getElementById("fbPlanType"),
+    fbPlanTime: document.getElementById("fbPlanTime"),
+    fbPlanTimes: document.getElementById("fbPlanTimes"),
+    fbPlanWeekday: document.getElementById("fbPlanWeekday"),
+    fbPlanApplyBtn: document.getElementById("fbPlanApplyBtn"),
+    fbPendingCount: document.getElementById("fbPendingCount"),
+    fbPostedCount: document.getElementById("fbPostedCount"),
+    fbFailedCount: document.getElementById("fbFailedCount"),
+    fbSchedulerState: document.getElementById("fbSchedulerState"),
+    fbTimezoneLabel: document.getElementById("fbTimezoneLabel"),
+    fbLastRunLabel: document.getElementById("fbLastRunLabel"),
+    fbInstantPostToggle: document.getElementById("fbInstantPostToggle"),
+    fbQueueList: document.getElementById("fbQueueList"),
+    fbLogsContainer: document.getElementById("fbLogsContainer"),
     ytRunBtn: document.getElementById("ytRunBtn"),
     ytStartBtn: document.getElementById("ytStartBtn"),
     ytStopBtn: document.getElementById("ytStopBtn"),
@@ -204,6 +225,7 @@ const UI = {
     this.updateFriendlyScheduleVisibility("tiktok");
     this.updateFriendlyScheduleVisibility("instagram");
     this.updateFriendlyScheduleVisibility("youtube");
+    this.updateFriendlyScheduleVisibility("facebook");
     this.startPolling();
     this.renderAccounts();
   },
@@ -381,6 +403,56 @@ const UI = {
     if (this.els.igRandomQueueToggle) {
       this.els.igRandomQueueToggle.addEventListener("change", () =>
         this.handleRandomQueueToggle(this.els.igRandomQueueToggle.checked)
+      );
+    }
+    if (this.els.fbStartBtn) {
+      this.els.fbStartBtn.addEventListener("click", () =>
+        this.handleAction("/api/facebook/start")
+      );
+    }
+    if (this.els.fbStopBtn) {
+      this.els.fbStopBtn.addEventListener("click", () =>
+        this.handleAction("/api/facebook/stop")
+      );
+    }
+    if (this.els.fbRunBtn) {
+      this.els.fbRunBtn.addEventListener("click", () =>
+        this.handleAction("/api/facebook/run-once")
+      );
+    }
+    if (this.els.fbUpdateScheduleBtn) {
+      this.els.fbUpdateScheduleBtn.addEventListener("click", () =>
+        this.handleUpdateSchedule(false, false, false, true)
+      );
+    }
+    if (this.els.fbPlanType) {
+      this.els.fbPlanType.addEventListener("change", () =>
+        this.handleFriendlyScheduleDraftChange("facebook")
+      );
+    }
+    if (this.els.fbPlanTime) {
+      this.els.fbPlanTime.addEventListener("change", () =>
+        this.handleFriendlyScheduleDraftChange("facebook")
+      );
+    }
+    if (this.els.fbPlanWeekday) {
+      this.els.fbPlanWeekday.addEventListener("change", () =>
+        this.handleFriendlyScheduleDraftChange("facebook")
+      );
+    }
+    if (this.els.fbPlanTimes) {
+      this.els.fbPlanTimes.addEventListener("input", () =>
+        this.handleFriendlyScheduleDraftChange("facebook")
+      );
+    }
+    if (this.els.fbPlanApplyBtn) {
+      this.els.fbPlanApplyBtn.addEventListener("click", () =>
+        this.handleFriendlySchedule("facebook")
+      );
+    }
+    if (this.els.fbInstantPostToggle) {
+      this.els.fbInstantPostToggle.addEventListener("change", () =>
+        this.handleInstantPostToggle("facebook", this.els.fbInstantPostToggle.checked)
       );
     }
     if (this.els.ytStartBtn) {
@@ -752,6 +824,13 @@ const UI = {
         weekday: this.els.ytPlanWeekday,
         cronInput: this.els.ytCronInput,
       },
+      facebook: {
+        type: this.els.fbPlanType,
+        time: this.els.fbPlanTime,
+        times: this.els.fbPlanTimes,
+        weekday: this.els.fbPlanWeekday,
+        cronInput: this.els.fbCronInput,
+      },
     };
     return map[platform];
   },
@@ -761,6 +840,7 @@ const UI = {
       tiktok: { schedule: "/api/schedule", runOnce: "/api/run-once" },
       instagram: { schedule: "/api/instagram/schedule", runOnce: "/api/instagram/run-once" },
       youtube: { schedule: "/api/youtube/schedule", runOnce: "/api/youtube/run-once" },
+      facebook: { schedule: "/api/facebook/schedule", runOnce: "/api/facebook/run-once" },
     };
     return map[platform];
   },
@@ -957,19 +1037,26 @@ const UI = {
   async handleUpdateSchedule(
     fromTikTokView,
     fromInstagramView = false,
-    fromYouTubeView = false
+    fromYouTubeView = false,
+    fromFacebookView = false
   ) {
-    const platform = fromYouTubeView
+    const platform = fromFacebookView
+      ? "facebook"
+      : fromYouTubeView
       ? "youtube"
       : fromInstagramView
         ? "instagram"
         : "tiktok";
-    const input = platform === "youtube"
+    const input = platform === "facebook"
+      ? this.els.fbCronInput
+      : platform === "youtube"
       ? this.els.ytCronInput
       : platform === "instagram"
         ? this.els.igCronInput
         : this.els.ttCronInput;
-    const saveBtn = platform === "youtube"
+    const saveBtn = platform === "facebook"
+      ? this.els.fbUpdateScheduleBtn
+      : platform === "youtube"
       ? this.els.ytUpdateScheduleBtn
       : platform === "instagram"
         ? this.els.igUpdateScheduleBtn
@@ -986,7 +1073,9 @@ const UI = {
         saveBtn.textContent = defaultLabel;
       }, 2000);
 
-      const endpoint = fromYouTubeView
+      const endpoint = fromFacebookView
+        ? "/api/facebook/schedule"
+        : fromYouTubeView
         ? "/api/youtube/schedule"
         : fromInstagramView
           ? "/api/instagram/schedule"
@@ -1037,11 +1126,13 @@ const UI = {
       tiktok: "/api/instant-post",
       instagram: "/api/instagram/instant-post",
       youtube: "/api/youtube/instant-post",
+      facebook: "/api/facebook/instant-post",
     };
     const toggleMap = {
       tiktok: this.els.ttInstantPostToggle,
       instagram: this.els.igInstantPostToggle,
       youtube: this.els.ytInstantPostToggle,
+      facebook: this.els.fbInstantPostToggle,
     };
     try {
       await API.post(endpointMap[platform], { enabled });
@@ -1111,11 +1202,13 @@ const UI = {
       tiktok: "/api/tiktok/login",
       instagram: "/api/instagram/login",
       youtube: "/api/youtube/login",
+      facebook: "/api/facebook/login",
     };
     const labelMap = {
       tiktok: "TikTok",
       instagram: "Instagram",
       youtube: "YouTube",
+      facebook: "Facebook",
     };
     try {
       const result = await API.post(endpointMap[platform]);
@@ -1135,11 +1228,13 @@ const UI = {
       tiktok: "/api/tiktok/login/close",
       instagram: "/api/instagram/login/close",
       youtube: "/api/youtube/login/close",
+      facebook: "/api/facebook/login/close",
     };
     const labelMap = {
       tiktok: "TikTok",
       instagram: "Instagram",
       youtube: "YouTube",
+      facebook: "Facebook",
     };
     try {
       const result = await API.post(endpointMap[platform]);
@@ -1181,6 +1276,8 @@ const UI = {
         tiktokLoginStatus,
         instagramLoginStatus,
         youtubeLoginStatus,
+        facebookStatus,
+        facebookLoginStatus,
       ] = await Promise.all([
         API.get("/api/status"),
         API.get("/api/instagram/status"),
@@ -1190,6 +1287,8 @@ const UI = {
         API.get("/api/tiktok/login/status"),
         API.get("/api/instagram/login/status"),
         API.get("/api/youtube/login/status"),
+        API.get("/api/facebook/status"),
+        API.get("/api/facebook/login/status"),
       ]);
       // Fetch autodownload status in parallel but don't block others
       API.get("/api/autodownload/status").then((ad) => this.renderAutoDownloadStatus(ad)).catch(() => { });
@@ -1199,6 +1298,7 @@ const UI = {
       this.renderStatus(status);
       this.renderInstagramStatus(instagramStatus);
       this.renderYouTubeStatus(youtubeStatus);
+      this.renderFacebookStatus(facebookStatus);
       this.renderUniquifierStatus(uniquifier);
       this.renderBrandSelector(accounts);
       this.accountState = {
@@ -1216,6 +1316,11 @@ const UI = {
           loginOpen: Boolean(youtubeLoginStatus?.open),
           sessionSaved: Boolean(youtubeLoginStatus?.saved),
           schedulerRunning: Boolean(youtubeStatus?.running),
+        },
+        facebook: {
+          loginOpen: Boolean(facebookLoginStatus?.open),
+          sessionSaved: Boolean(facebookLoginStatus?.saved),
+          schedulerRunning: Boolean(facebookStatus?.running),
         },
         brands: accounts?.accounts || [],
         activeBrandId: accounts?.activeAccountId || null,
@@ -1292,6 +1397,12 @@ const UI = {
         icon: "ph-youtube-logo",
         color: "#FF0000",
         bg: "#FF0000",
+      },
+      facebook: {
+        label: "Facebook",
+        icon: "ph-facebook-logo",
+        color: "#1877F2",
+        bg: "#1877F2",
       },
     };
 
@@ -1635,6 +1746,78 @@ const UI = {
     if (this.els.igLastRunLabel) this.els.igLastRunLabel.textContent = lastRunText;
   },
 
+  renderFacebookStatus(data) {
+    const pending = data.queue?.counts?.pending ?? 0;
+    const posted = data.queue?.counts?.posted ?? 0;
+    const failed = data.queue?.counts?.failed ?? 0;
+    const pendingVideos = data.queue?.pendingVideos || [];
+    const timezone = data.timezone || "UTC";
+    const lastRunText = data.lastRunAt ? new Date(data.lastRunAt).toLocaleString() : "Never";
+
+    if (this.els.fbPendingCount) this.els.fbPendingCount.textContent = pending;
+    if (this.els.fbPostedCount) this.els.fbPostedCount.textContent = posted;
+    if (this.els.fbFailedCount) this.els.fbFailedCount.textContent = failed;
+    if (this.els.fbSchedulerState) {
+      this.els.fbSchedulerState.textContent = data.running ? "Running" : "Stopped";
+      this.els.fbSchedulerState.classList.toggle("success", Boolean(data.running));
+      this.els.fbSchedulerState.classList.toggle("error", !data.running);
+    }
+
+    // Sync instant-post toggle
+    if (this.els.fbInstantPostToggle && document.activeElement !== this.els.fbInstantPostToggle) {
+      this.els.fbInstantPostToggle.checked = Boolean(data.instantPost);
+    }
+
+    if (this.els.fbRandomQueueToggle && document.activeElement !== this.els.fbRandomQueueToggle) {
+      this.els.fbRandomQueueToggle.checked = Boolean(data.randomQueueOrder);
+    }
+
+    const logsHtml = (data.logs || [])
+      .slice()
+      .reverse()
+      .map(
+        (logEntry) => `
+      <div class="log-entry">
+        <span class="log-time">${logEntry.at.split("T")[1].split(".")[0]}</span>
+        <span class="log-msg ${logEntry.level === "error" ? "log-error" : ""}">${escapeHtml(logEntry.message)}</span>
+      </div>
+    `
+      )
+      .join("");
+    this.updateLogContainer(this.els.fbLogsContainer, logsHtml);
+
+    const queueHtml = pendingVideos.length
+      ? pendingVideos
+        .map((video) => {
+          const videoName = typeof video === "string" ? video : video.name;
+          const hasCaption = typeof video === "object" && video.hasCaption;
+          return `
+      <div class="queue-item">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <i class="ph ph-file-video" style="font-size:20px;"></i>
+          <span>${escapeHtml(videoName)}</span>
+          ${hasCaption ? '<span class="status-badge" style="background:rgba(255,255,255,0.1); color:#ccc; border:1px solid #444; margin-left:8px;"><i class="ph ph-text-align-left"></i> Caption</span>' : ''}
+        </div>
+        <span class="status-badge active">Pending</span>
+      </div>
+    `;
+        })
+        .join("")
+      : '<div style="text-align:center; padding:20px; color:#666;">Queue is empty</div>';
+    if (this.els.fbQueueList) this.els.fbQueueList.innerHTML = queueHtml;
+
+    if (
+      this.els.fbCronInput &&
+      document.activeElement !== this.els.fbCronInput &&
+      !this.isScheduleDraftDirty("facebook")
+    ) {
+      this.els.fbCronInput.value = data.cronExpression || "";
+    }
+    this.applySchedulePlanFromStatus("facebook", data);
+    if (this.els.fbTimezoneLabel) this.els.fbTimezoneLabel.textContent = timezone;
+    if (this.els.fbLastRunLabel) this.els.fbLastRunLabel.textContent = lastRunText;
+  },
+
   renderYouTubeStatus(data) {
     const pending = data.queue?.counts?.pending ?? 0;
     const posted = data.queue?.counts?.posted ?? 0;
@@ -1809,6 +1992,11 @@ const UI = {
         platformKey: "youtube",
         platform: "YouTube",
         icon: "ph-youtube-logo",
+      },
+      {
+        platformKey: "facebook",
+        platform: "Facebook",
+        icon: "ph-facebook-logo",
       },
     ];
 

@@ -3,6 +3,7 @@ const { config } = require("./config");
 const { DaemonController } = require("./daemon-controller");
 const { InstagramDaemonController } = require("./instagram-daemon-controller");
 const { YouTubeDaemonController } = require("./youtube-daemon-controller");
+const { FacebookDaemonController } = require("./facebook-daemon-controller");
 const { getAccountQueueDirs, ensureAccountDirs } = require("./account-manager");
 
 /**
@@ -57,6 +58,13 @@ async function getDaemons(accountId) {
             failedDir: queueDirs.youtube.failed,
             statePath: path.resolve(stateDir, "youtube-scheduler-state.json"),
         }),
+        facebook: new FacebookDaemonController({
+            accountId,
+            queueDir: queueDirs.facebook.pending,
+            postedDir: queueDirs.facebook.posted,
+            failedDir: queueDirs.facebook.failed,
+            statePath: path.resolve(stateDir, "facebook-scheduler-state.json"),
+        }),
     };
 
     registry.set(accountId, daemons);
@@ -73,6 +81,7 @@ async function getAllStatus() {
             tiktok: await daemons.tiktok.getStatus(),
             instagram: await daemons.instagram.getStatus(),
             youtube: await daemons.youtube.getStatus(),
+            facebook: await daemons.facebook.getStatus(),
         };
     }
     return results;
