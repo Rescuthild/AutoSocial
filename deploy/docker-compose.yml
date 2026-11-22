@@ -1,8 +1,11 @@
 # Run from the repository root:
 #   docker compose -f deploy/docker-compose.yml up -d --build
 # Ports and bind addresses come from deploy/.env (not committed):
-#   NOVNC_HOST, NOVNC_PORT, VNC_PORT
+#   NOVNC_HOST, NOVNC_PORT, VNC_PORT, VNC_PASSWORD
 # Dashboard host/port come from the repository .env (DASHBOARD_HOST, DASHBOARD_PORT).
+# Keep both on 127.0.0.1 and reach them through an SSH tunnel:
+#   ssh -N -L 3310:127.0.0.1:3310 -L 6085:127.0.0.1:6085 root@<server>
+# host networking is used only so loopback binds are reachable by sshd.
 services:
   autosocial:
     build:
@@ -17,5 +20,6 @@ services:
       NOVNC_HOST: ${NOVNC_HOST:-127.0.0.1}
       NOVNC_PORT: ${NOVNC_PORT:-6085}
       VNC_PORT: ${VNC_PORT:-5910}
+      VNC_PASSWORD: ${VNC_PASSWORD:-}
     volumes:
       - ..:/app
