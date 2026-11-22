@@ -28,6 +28,11 @@ const {
   closeLoginSession: closeYouTubeLoginSession,
 } = require("./youtube-uploader");
 const {
+  startLoginSession: startFacebookLoginSession,
+  getLoginSessionStatus: getFacebookLoginSessionStatus,
+  closeLoginSession: closeFacebookLoginSession,
+} = require("./facebook-uploader");
+const {
   getState,
   addAccount,
   selectAccount,
@@ -398,6 +403,30 @@ async function createServer() {
   app.post("/api/instagram/login/close", async (req, res) => {
     try {
       const result = await closeInstagramLoginSession();
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ ok: false, error: error.message });
+    }
+  });
+
+  // Login endpoints (Facebook)
+
+  app.post("/api/facebook/login", async (req, res) => {
+    try {
+      const result = await startFacebookLoginSession();
+      res.json(result);
+    } catch (error) {
+      res.status(400).json({ ok: false, error: error.message });
+    }
+  });
+
+  app.get("/api/facebook/login/status", async (req, res) => {
+    res.json(await getFacebookLoginSessionStatus());
+  });
+
+  app.post("/api/facebook/login/close", async (req, res) => {
+    try {
+      const result = await closeFacebookLoginSession();
       res.json(result);
     } catch (error) {
       res.status(400).json({ ok: false, error: error.message });
