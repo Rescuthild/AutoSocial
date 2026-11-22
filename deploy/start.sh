@@ -34,7 +34,7 @@ Xvfb :99 -screen 0 1440x1000x24 -nolisten tcp >/dev/null 2>&1 &
 sleep 1
 fluxbox >/dev/null 2>&1 &
 # shellcheck disable=SC2086
-x11vnc -display :99 -forever -shared -noshm $VNC_AUTH -listen 127.0.0.1 \
+x11vnc -display :99 -forever -shared -noshm -no6 $VNC_AUTH -listen 127.0.0.1 \
   -rfbport "$VNC_PORT" -quiet >/dev/null 2>&1 &
 websockify --web /usr/share/novnc "$NOVNC_HOST:$NOVNC_PORT" \
   "127.0.0.1:$VNC_PORT" >/dev/null 2>&1 &
